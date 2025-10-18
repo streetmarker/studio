@@ -9,16 +9,19 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
-import { useUser } from '@/firebase';
+import { useUser, useStorage } from '@/firebase';
 import { useRouter } from 'next/navigation';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export default function Home() {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [review, setReview] = useState<GeneratePhotoReviewOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
+  const storage = useStorage();
   const router = useRouter();
 
   const handlePhotoUpload = (file: File) => {
@@ -61,7 +64,7 @@ export default function Home() {
   };
 
   const handleSave = async () => {
-    if (!review || !photoDataUrl || !user) {
+    if (!review || !photoDataUrl || !user || !storage) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -69,26 +72,38 @@ export default function Home() {
       });
       return;
     }
-    
-    const token = await user.getIdToken();
-    const reviewText = JSON.stringify(review);
-    const result = await saveReview({ photoUrl: photoDataUrl, reviewText, token });
 
-    if (result.success) {
-      toast({
-        title: 'Review Saved!',
-        description: 'Your photo and critique have been saved to your profile.',
-      });
-      router.push('/profile');
-    } else {
+    setIsSaving(true);
+    try {
+      // 1. Upload image to Firebase Storage
+      const storageRef = ref(storage, `photos/${user.uid}/${Date.now()}.jpg`);
+      const uploadResult = await uploadString(storageRef, photoDataUrl, 'data_url');
+      const downloadURL = await getDownloadURL(uploadResult.ref);
+
+      // 2. Save review with the image URL
+      const token = await user.getIdToken();
+      const reviewText = JSON.stringify(review);
+      const result = await saveReview({ photoUrl: downloadURL, reviewText, token });
+
+      if (result.success) {
+        toast({
+          title: 'Review Saved!',
+          description: 'Your photo and critique have been saved to your profile.',
+        });
+        router.push('/profile');
+      } else {
+        throw new Error(result.error || 'Could not save review.');
+      }
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Uh oh! Something went wrong.',
-        description: result.error || 'Could not save review.',
+        description: error.message || 'An unknown error occurred while saving.',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
-
 
   const handleClear = () => {
     setPhotoDataUrl(null);
@@ -112,7 +127,7 @@ export default function Home() {
               onSave={handleSave}
               onClear={handleClear}
               isLoggedIn={!!user}
-              isSaving={isPending}
+              isSaving={isSaving}
             />
             {error && (
               <Card className="border-destructive bg-destructive/10">

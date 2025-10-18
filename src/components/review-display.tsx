@@ -100,7 +100,7 @@ export function ReviewDisplay({
 
         <div className="flex flex-col gap-4 sm:flex-row">
           <Button onClick={onRegenerate} disabled={isLoading || !review} className="w-full sm:w-auto">
-            {isLoading && review && !isSaving ? (
+            {isLoading && review && isSaving ? (
               <LoaderCircle className="animate-spin" />
             ) : (
               <RefreshCw />

@@ -48,7 +48,7 @@ export async function getNewReview(
 }
 
 const saveReviewSchema = z.object({
-  photoUrl: photoSchema,
+  photoUrl: z.string().url(), // Now we expect a URL
   reviewText: z.string(),
   token: z.string(),
 });
