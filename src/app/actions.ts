@@ -48,7 +48,6 @@ export async function getNewReview(
 }
 
 const saveReviewSchema = z.object({
-  photoUrl: z.string().url(),
   reviewText: z.string(),
   token: z.string(),
 });
@@ -57,6 +56,7 @@ export async function saveReview(
   input: z.infer<typeof saveReviewSchema>
 ): Promise<{ success: boolean; error?: string; reviewId?: string }> {
   const { auth, firestore } = await getFirebaseAdmin();
+
 
   if (!input.token) {
     return { success: false, error: 'Authentication required.' };
@@ -70,13 +70,12 @@ export async function saveReview(
 
     const reviewData = {
       userProfileId: userId,
-      photoUrl: validatedInput.photoUrl,
       reviewText: validatedInput.reviewText,
       createdAt: FieldValue.serverTimestamp(),
     };
 
     const docRef = await firestore.collection('users').doc(userId).collection('photoReviews').add(reviewData);
-
+    
     return { success: true, reviewId: docRef.id };
   } catch (error) {
     console.error('Error saving review:', error);

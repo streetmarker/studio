@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 
 type PhotoReview = {
   id: string;
-  photoUrl: string;
+  photoUrl?: string; // Made optional
   reviewText: string;
   createdAt: {
     seconds: number;
@@ -67,17 +67,7 @@ export default function ProfilePage() {
               
               return (
                 <Card key={review.id} className="overflow-hidden shadow-lg">
-                  <CardContent className="p-0">
-                    <div className="relative aspect-square w-full">
-                      <Image
-                        src={review.photoUrl}
-                        alt="Reviewed photo"
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      />
-                    </div>
-                    <div className="p-6">
+                  <CardContent className="p-6">
                       <div className="space-y-4 leading-relaxed text-foreground/90 text-sm">
                         <ReviewSection title="Overall" content={parsedReview.overall} />
                         <ReviewSection title="Lighting" content={parsedReview.lighting} />
@@ -104,7 +94,6 @@ export default function ProfilePage() {
                           Saved {formatDistanceToNow(createdAtDate, { addSuffix: true })}
                         </p>
                       </div>
-                    </div>
                   </CardContent>
                 </Card>
               );

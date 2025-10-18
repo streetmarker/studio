@@ -3,6 +3,8 @@
 import { initializeApp, getApps, getApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { collection, addDoc } from "firebase/firestore";
+
 
 let app: App;
 
@@ -41,5 +43,5 @@ export async function getFirebaseAdmin() {
   const app = await getFirebaseAdminApp();
   const auth = getAuth(app);
   const firestore = getFirestore(app);
-  return { app, auth, firestore };
+  return { app, auth, firestore, collection, addDoc };
 }

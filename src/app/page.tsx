@@ -11,7 +11,6 @@ import { AlertTriangle } from 'lucide-react';
 import type { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
 import { useUser, useStorage } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export default function Home() {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -64,7 +63,7 @@ export default function Home() {
   };
 
   const handleSave = async () => {
-    if (!review || !photoDataUrl || !user || !storage) {
+    if (!review || !photoDataUrl || !user ) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -75,15 +74,9 @@ export default function Home() {
 
     setIsSaving(true);
     try {
-      // 1. Upload image to Firebase Storage
-      const storageRef = ref(storage, `photos/${user.uid}/${Date.now()}.jpg`);
-      const uploadResult = await uploadString(storageRef, photoDataUrl, 'data_url');
-      const downloadURL = await getDownloadURL(uploadResult.ref);
-
-      // 2. Save review with the image URL
       const token = await user.getIdToken();
       const reviewText = JSON.stringify(review);
-      const result = await saveReview({ photoUrl: downloadURL, reviewText, token });
+      const result = await saveReview({ reviewText, token });
 
       if (result.success) {
         toast({
