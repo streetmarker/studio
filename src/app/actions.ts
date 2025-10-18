@@ -48,7 +48,7 @@ export async function getNewReview(
 }
 
 const saveReviewSchema = z.object({
-  // photoUrl: z.string().url(), // Now we expect a URL
+  photoUrl: z.string().url(),
   reviewText: z.string(),
   token: z.string(),
 });
@@ -65,20 +65,16 @@ export async function saveReview(
   try {
     const decodedToken = await auth.verifyIdToken(input.token);
     const userId = decodedToken.uid;
-    console.log("userId", userId)
-    console.log("decodedToken", decodedToken)
-
-
+    
     const validatedInput = saveReviewSchema.parse(input);
-    console.log("validatedInput", validatedInput)
 
     const reviewData = {
       userProfileId: userId,
-      // photoUrl: validatedInput.photoUrl,
+      photoUrl: validatedInput.photoUrl,
       reviewText: validatedInput.reviewText,
       createdAt: FieldValue.serverTimestamp(),
     };
-    console.log("reviewData", reviewData)
+
     const docRef = await firestore.collection('users').doc(userId).collection('photoReviews').add(reviewData);
 
     return { success: true, reviewId: docRef.id };
