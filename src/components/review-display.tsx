@@ -1,11 +1,12 @@
 'use client';
 
 import Image from 'next/image';
-import { RefreshCw, Save, LoaderCircle, UploadCloud, Star } from 'lucide-react';
+import { RefreshCw, Save, LoaderCircle, UploadCloud, Star, LogIn } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
+import Link from 'next/link';
 
 interface ReviewDisplayProps {
   photoDataUrl: string;
@@ -14,6 +15,8 @@ interface ReviewDisplayProps {
   onRegenerate: () => void;
   onSave: () => void;
   onClear: () => void;
+  isLoggedIn: boolean;
+  isSaving: boolean;
 }
 
 const ReviewSection = ({ title, content }: { title: string; content: string }) => (
@@ -30,6 +33,8 @@ export function ReviewDisplay({
   onRegenerate,
   onSave,
   onClear,
+  isLoggedIn,
+  isSaving,
 }: ReviewDisplayProps) {
   return (
     <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-8 md:grid-cols-2">
@@ -95,22 +100,31 @@ export function ReviewDisplay({
 
         <div className="flex flex-col gap-4 sm:flex-row">
           <Button onClick={onRegenerate} disabled={isLoading || !review} className="w-full sm:w-auto">
-            {isLoading && review ? (
+            {isLoading && review && !isSaving ? (
               <LoaderCircle className="animate-spin" />
             ) : (
               <RefreshCw />
             )}
             Regenerate
           </Button>
-          <Button
-            onClick={onSave}
-            variant="secondary"
-            disabled={isLoading || !review}
-            className="w-full sm:w-auto"
-          >
-            <Save />
-            Save to Profile
-          </Button>
+          {isLoggedIn ? (
+            <Button
+              onClick={onSave}
+              variant="secondary"
+              disabled={isLoading || !review || isSaving}
+              className="w-full sm:w-auto"
+            >
+              {isSaving ? <LoaderCircle className="animate-spin" /> : <Save />}
+              Save to Profile
+            </Button>
+          ) : (
+            <Button asChild variant="secondary" className="w-full sm:w-auto" disabled={!review}>
+              <Link href="/login">
+                <LogIn />
+                Login to Save
+              </Link>
+            </Button>
+          )}
         </div>
         <Button
           onClick={onClear}

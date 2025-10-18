@@ -4,11 +4,13 @@ import { useState, useTransition } from 'react';
 import { Header } from '@/components/layout/header';
 import { PhotoUploader } from '@/components/photo-uploader';
 import { ReviewDisplay } from '@/components/review-display';
-import { getReview, getNewReview } from '@/app/actions';
+import { getReview, getNewReview, saveReview } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -16,6 +18,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
 
   const handlePhotoUpload = (file: File) => {
     const reader = new FileReader();
@@ -56,12 +60,34 @@ export default function Home() {
     });
   };
 
-  const handleSave = () => {
-    toast({
-      title: 'Review Saved!',
-      description: 'Your photo and critique have been saved to your profile.',
-    });
+  const handleSave = async () => {
+    if (!review || !photoDataUrl || !user) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You must be logged in to save a review.',
+      });
+      return;
+    }
+
+    const reviewText = JSON.stringify(review);
+    const result = await saveReview({ photoUrl: photoDataUrl, reviewText });
+
+    if (result.success) {
+      toast({
+        title: 'Review Saved!',
+        description: 'Your photo and critique have been saved to your profile.',
+      });
+      router.push('/profile');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
+        description: result.error || 'Could not save review.',
+      });
+    }
   };
+
 
   const handleClear = () => {
     setPhotoDataUrl(null);
@@ -84,6 +110,8 @@ export default function Home() {
               onRegenerate={handleRegenerate}
               onSave={handleSave}
               onClear={handleClear}
+              isLoggedIn={!!user}
+              isSaving={isPending}
             />
             {error && (
               <Card className="border-destructive bg-destructive/10">
