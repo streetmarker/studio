@@ -1,0 +1,78 @@
+/**
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict user-ownership model for the PhotoCritique application.
+ *
+ * Data Structure:
+ * - User profiles are stored in `/users/{userId}`, where `{userId}` matches the Firebase Auth UID.
+ * - Photo reviews are stored in `/users/{userId}/photoReviews/{photoReviewId}`, ensuring that reviews are associated with their respective users.
+ *
+ * Key Security Decisions:
+ * - Users can only access their own profile data.
+ * - Users can only create, read, update, and delete their own photo reviews.
+ * - Listing photo reviews is restricted to the owner.
+ * - Data consistency between the path and the document's internal fields (`userId` and `userProfileId`) is enforced on both creation and update.
+ *
+ * Denormalization for Authorization:
+ * - The `userProfileId` field in the `PhotoReview` entity is denormalized and MUST match the `userId` path segment. This simplifies ownership checks and avoids costly `get()` calls.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow (create) Signed-in user with matching userId in the document can create their profile.
+     * @allow (get, list, update, delete) Signed-in user with matching userId can access their profile.
+     * @deny (create, get, list, update, delete) Any other user cannot access this profile.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to photo review documents nested under a user profile.
+     * @path /users/{userId}/photoReviews/{photoReviewId}
+     * @allow (create) Signed-in user with matching userId can create a photo review. The userProfileId field must match the userId path segment.
+     * @allow (get, list, update, delete) Signed-in user with matching userId can access and modify their own photo reviews.
+     * @deny (create, get, list, update, delete) Any other user cannot access these photo reviews.
+     * @principle Enforces document ownership and validates relational integrity.
+     */
+    match /users/{userId}/photoReviews/{photoReviewId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+       function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userProfileId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userProfileId == userId && request.resource.data.userProfileId == resource.data.userProfileId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
