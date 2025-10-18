@@ -2,11 +2,10 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 import { Header } from '@/components/layout/header';
 import Loading from '../loading';
 import { Card, CardContent } from '@/components/ui/card';
-import Image from 'next/image';
 import { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
 import { Star } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,12 +13,8 @@ import { Button } from '@/components/ui/button';
 
 type PhotoReview = {
   id: string;
-  photoUrl?: string; // Made optional
   reviewText: string;
-  createdAt: {
-    seconds: number;
-    nanoseconds: number;
-  };
+  createdAt: Timestamp;
 };
 
 const ReviewSection = ({ title, content }: { title: string; content: string }) => (
@@ -63,7 +58,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {reviews.map((review) => {
               const parsedReview: GeneratePhotoReviewOutput = JSON.parse(review.reviewText);
-              const createdAtDate = new Date(review.createdAt.seconds * 1000);
+              const createdAtDate = review.createdAt.toDate();
               
               return (
                 <Card key={review.id} className="overflow-hidden shadow-lg">

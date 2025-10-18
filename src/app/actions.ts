@@ -5,9 +5,7 @@ import {
   generatePhotoReview,
 } from '@/ai/flows/generate-photo-review';
 import { regeneratePhotoReview } from '@/ai/flows/regenerate-photo-review';
-import { getFirebaseAdmin } from '@/firebase/server';
 import { z } from 'zod';
-import { FieldValue } from 'firebase-admin/firestore';
 
 const photoSchema = z.string().startsWith('data:image/', { message: 'Invalid image format.' });
 
@@ -44,47 +42,5 @@ export async function getNewReview(
       success: false,
       error: 'Failed to regenerate review. The AI model may be unavailable.',
     };
-  }
-}
-
-const saveReviewSchema = z.object({
-  reviewText: z.string(),
-  token: z.string(),
-});
-
-export async function saveReview(
-  input: z.infer<typeof saveReviewSchema>
-): Promise<{ success: boolean; error?: string; reviewId?: string }> {
-  const { auth, firestore } = await getFirebaseAdmin();
-
-
-  if (!input.token) {
-    return { success: false, error: 'Authentication required.' };
-  }
-
-  try {
-    const decodedToken = await auth.verifyIdToken(input.token);
-    const userId = decodedToken.uid;
-    
-    const validatedInput = saveReviewSchema.parse(input);
-
-    const reviewData = {
-      userProfileId: userId,
-      reviewText: validatedInput.reviewText,
-      createdAt: FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await firestore.collection('users').doc(userId).collection('photoReviews').add(reviewData);
-    
-    return { success: true, reviewId: docRef.id };
-  } catch (error) {
-    console.error('Error saving review:', error);
-    if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors.map((e) => e.message).join(', ') };
-    }
-    if (error instanceof Error && (error.name === 'auth/id-token-expired' || error.name === 'auth/argument-error')) {
-      return { success: false, error: 'Authentication failed. Please log in again.' };
-    }
-    return { success: false, error: 'An unknown error occurred while saving the review.' };
   }
 }

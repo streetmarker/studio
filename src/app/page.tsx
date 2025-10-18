@@ -4,13 +4,14 @@ import { useState, useTransition } from 'react';
 import { Header } from '@/components/layout/header';
 import { PhotoUploader } from '@/components/photo-uploader';
 import { ReviewDisplay } from '@/components/review-display';
-import { getReview, getNewReview, saveReview } from '@/app/actions';
+import { getReview, getNewReview } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
-import { useUser, useStorage } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function Home() {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -20,7 +21,7 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useUser();
-  const storage = useStorage();
+  const firestore = useFirestore();
   const router = useRouter();
 
   const handlePhotoUpload = (file: File) => {
@@ -63,7 +64,7 @@ export default function Home() {
   };
 
   const handleSave = async () => {
-    if (!review || !photoDataUrl || !user ) {
+    if (!review || !user || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -74,20 +75,23 @@ export default function Home() {
 
     setIsSaving(true);
     try {
-      const token = await user.getIdToken();
       const reviewText = JSON.stringify(review);
-      const result = await saveReview({ reviewText, token });
+      const reviewsCollectionRef = collection(firestore, `users/${user.uid}/photoReviews`);
+      
+      await addDoc(reviewsCollectionRef, {
+        userProfileId: user.uid,
+        reviewText: reviewText,
+        createdAt: serverTimestamp(),
+      });
 
-      if (result.success) {
-        toast({
-          title: 'Review Saved!',
-          description: 'Your photo and critique have been saved to your profile.',
-        });
-        router.push('/profile');
-      } else {
-        throw new Error(result.error || 'Could not save review.');
-      }
+      toast({
+        title: 'Review Saved!',
+        description: 'Your photo critique has been saved to your profile.',
+      });
+      router.push('/profile');
+
     } catch (error: any) {
+      console.error("Error saving review: ", error);
       toast({
         variant: 'destructive',
         title: 'Uh oh! Something went wrong.',
