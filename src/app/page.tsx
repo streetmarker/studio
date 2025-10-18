@@ -69,9 +69,10 @@ export default function Home() {
       });
       return;
     }
-
+    
+    const token = await user.getIdToken();
     const reviewText = JSON.stringify(review);
-    const result = await saveReview({ photoUrl: photoDataUrl, reviewText });
+    const result = await saveReview({ photoUrl: photoDataUrl, reviewText, token });
 
     if (result.success) {
       toast({

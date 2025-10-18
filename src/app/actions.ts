@@ -8,7 +8,6 @@ import { regeneratePhotoReview } from '@/ai/flows/regenerate-photo-review';
 import { getFirebaseAdmin } from '@/firebase/server';
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
-import { headers } from 'next/headers';
 
 const photoSchema = z.string().startsWith('data:image/', { message: 'Invalid image format.' });
 
@@ -51,21 +50,20 @@ export async function getNewReview(
 const saveReviewSchema = z.object({
   photoUrl: photoSchema,
   reviewText: z.string(),
+  token: z.string(),
 });
 
 export async function saveReview(
   input: z.infer<typeof saveReviewSchema>
 ): Promise<{ success: boolean; error?: string; reviewId?: string }> {
   const { auth, firestore } = await getFirebaseAdmin();
-  const headersList = headers();
-  const token = headersList.get('Authorization')?.split('Bearer ')[1];
-
-  if (!token) {
+  
+  if (!input.token) {
     return { success: false, error: 'Authentication required.' };
   }
 
   try {
-    const decodedToken = await auth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(input.token);
     const userId = decodedToken.uid;
 
     const validatedInput = saveReviewSchema.parse(input);
