@@ -1,19 +1,27 @@
 'use client';
 
 import Image from 'next/image';
-import { RefreshCw, Save, LoaderCircle, UploadCloud } from 'lucide-react';
+import { RefreshCw, Save, LoaderCircle, UploadCloud, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
 
 interface ReviewDisplayProps {
   photoDataUrl: string;
-  review: string | null;
+  review: GeneratePhotoReviewOutput | null;
   isLoading: boolean;
   onRegenerate: () => void;
   onSave: () => void;
   onClear: () => void;
 }
+
+const ReviewSection = ({ title, content }: { title: string; content: string }) => (
+  <div>
+    <h3 className="font-bold">{title}</h3>
+    <p>{content}</p>
+  </div>
+);
 
 export function ReviewDisplay({
   photoDataUrl,
@@ -46,18 +54,42 @@ export function ReviewDisplay({
               AI Photo Review
             </h2>
             {isLoading && !review ? (
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-full" />
+              <div className="space-y-4">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-4/5" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-4 w-1/2" />
               </div>
-            ) : (
-              <div className="leading-relaxed text-foreground/90">
-                {review}
+            ) : review ? (
+              <div className="space-y-4 leading-relaxed text-foreground/90">
+                <ReviewSection title="Overall" content={review.overall} />
+                <ReviewSection title="Lighting" content={review.lighting} />
+                <ReviewSection title="Colors" content={review.colors} />
+                <ReviewSection title="Perspective" content={review.perspective} />
+                <ReviewSection title="Composition" content={review.composition} />
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold">Rating:</h3>
+                  <div className="flex">
+                    {[...Array(10)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-5 w-5 ${
+                          i < review.rating
+                            ? 'text-primary fill-primary'
+                            : 'text-muted-foreground/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-bold">{review.rating}/10</span>
+                </div>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 

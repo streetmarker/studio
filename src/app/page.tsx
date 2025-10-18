@@ -8,10 +8,11 @@ import { getReview, getNewReview } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
+import type { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
 
 export default function Home() {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
-  const [review, setReview] = useState<string | null>(null);
+  const [review, setReview] = useState<GeneratePhotoReviewOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -39,9 +40,10 @@ export default function Home() {
   const handleRegenerate = () => {
     if (!photoDataUrl || !review) return;
     setError(null);
+    const originalReviewJson = JSON.stringify(review);
 
     startTransition(async () => {
-      const result = await getNewReview(photoDataUrl, review);
+      const result = await getNewReview(photoDataUrl, originalReviewJson);
       if (result.success && result.review) {
         setReview(result.review);
         toast({

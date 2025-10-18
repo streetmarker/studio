@@ -21,7 +21,12 @@ const GeneratePhotoReviewInputSchema = z.object({
 export type GeneratePhotoReviewInput = z.infer<typeof GeneratePhotoReviewInputSchema>;
 
 const GeneratePhotoReviewOutputSchema = z.object({
-  review: z.string().describe('A detailed review of the photo, covering aspects like lighting, colors, and perspective.'),
+  overall: z.string().describe('An overall summary of the photo in two sentences.'),
+  lighting: z.string().describe('A two-sentence analysis of the photo\'s lighting.'),
+  colors: z.string().describe('A two-sentence evaluation of the photo\'s colors.'),
+  perspective: z.string().describe('A two-sentence assessment of the photo\'s perspective.'),
+  composition: z.string().describe('A two-sentence critique of the photo\'s composition.'),
+  rating: z.number().int().min(1).max(10).describe('A rating of the photo on a scale of 1 to 10.'),
 });
 export type GeneratePhotoReviewOutput = z.infer<typeof GeneratePhotoReviewOutputSchema>;
 
@@ -33,8 +38,16 @@ const prompt = ai.definePrompt({
   name: 'generatePhotoReviewPrompt',
   input: {schema: GeneratePhotoReviewInputSchema},
   output: {schema: GeneratePhotoReviewOutputSchema},
-  prompt: `You are a professional photographer and art critic. You are reviewing the provided photo and will provide a detailed critique covering the following aspects:\n\n- Lighting: Analyze the use of light in the photo. Is it natural or artificial? Is it effective in highlighting the subject and creating mood?\n- Colors: Evaluate the color palette of the photo. Are the colors vibrant or muted? Do they complement each other, and do they evoke specific emotions?\n- Perspective: Assess the photographer's use of perspective. Is it a wide-angle shot, a close-up, or something in between? How does the perspective affect the viewer's experience?\n- Overall Composition: Consider how all the elements in the photo come together to form a cohesive image. Is the composition balanced and visually appealing?\n\nWrite a detailed review based on your analysis. Be constructive and provide specific feedback.
-\nPhoto: {{media url=photoDataUri}}`,
+  prompt: `You are a professional photographer and art critic. You are reviewing the provided photo and will provide a detailed, structured critique. For each section, write exactly two sentences.
+
+- Overall: Provide a two-sentence overall summary of the photo.
+- Lighting: Provide a two-sentence analysis of the use of light. Is it natural or artificial? How does it affect the mood?
+- Colors: Provide a two-sentence evaluation of the color palette. Are the colors vibrant or muted? Do they evoke specific emotions?
+- Perspective: Provide a two-sentence assessment of the perspective. Is it a wide-angle shot, a close-up? How does it affect the viewer?
+- Composition: Provide a two-sentence critique of how all elements come together. Is the composition balanced and visually appealing?
+- Rating: Provide a rating for the photo from 1 to 10.
+
+Photo: {{media url=photoDataUri}}`,
 });
 
 const generatePhotoReviewFlow = ai.defineFlow(
