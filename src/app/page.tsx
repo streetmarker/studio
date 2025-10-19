@@ -9,9 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useStorage } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export default function Home() {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -22,6 +23,7 @@ export default function Home() {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
   const router = useRouter();
 
   const handlePhotoUpload = (file: File) => {
@@ -64,7 +66,7 @@ export default function Home() {
   };
 
   const handleSave = async () => {
-    if (!review || !user || !firestore) {
+    if (!review || !user || !firestore || !storage || !photoDataUrl) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -75,12 +77,21 @@ export default function Home() {
 
     setIsSaving(true);
     try {
+      // 1. Upload image to Firebase Storage
+      const imageRef = ref(storage, `photos/${user.uid}/${Date.now()}.jpg`);
+      await uploadString(imageRef, photoDataUrl, 'data_url');
+      
+      // 2. Get the download URL
+      const downloadURL = await getDownloadURL(imageRef);
+
+      // 3. Save review to Firestore with the image URL
       const reviewText = JSON.stringify(review);
       const reviewsCollectionRef = collection(firestore, `users/${user.uid}/photoReviews`);
       
       await addDoc(reviewsCollectionRef, {
         userProfileId: user.uid,
         reviewText: reviewText,
+        photoUrl: downloadURL,
         createdAt: serverTimestamp(),
       });
 

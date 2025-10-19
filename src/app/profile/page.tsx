@@ -10,11 +10,14 @@ import { GeneratePhotoReviewOutput } from '@/ai/flows/generate-photo-review';
 import { Star } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
+
 
 type PhotoReview = {
   id: string;
   reviewText: string;
   createdAt: Timestamp;
+  photoUrl: string;
 };
 
 const ReviewSection = ({ title, content }: { title: string; content: string }) => (
@@ -61,9 +64,20 @@ export default function ProfilePage() {
               const createdAtDate = review.createdAt.toDate();
               
               return (
-                <Card key={review.id} className="overflow-hidden shadow-lg">
-                  <CardContent className="p-6">
-                      <div className="space-y-4 leading-relaxed text-foreground/90 text-sm">
+                <Card key={review.id} className="overflow-hidden shadow-lg flex flex-col">
+                  {review.photoUrl && (
+                     <div className="relative aspect-square w-full">
+                       <Image 
+                         src={review.photoUrl}
+                         alt="Reviewed photo"
+                         fill
+                         className="object-cover"
+                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                       />
+                     </div>
+                  )}
+                  <CardContent className="p-6 flex-grow flex flex-col">
+                      <div className="space-y-4 leading-relaxed text-foreground/90 text-sm flex-grow">
                         <ReviewSection title="Overall" content={parsedReview.overall} />
                         <ReviewSection title="Lighting" content={parsedReview.lighting} />
                         <ReviewSection title="Colors" content={parsedReview.colors} />
@@ -85,10 +99,10 @@ export default function ProfilePage() {
                           </div>
                           <span className="font-bold">{parsedReview.rating}/10</span>
                         </div>
-                         <p className="text-xs text-muted-foreground pt-2">
-                          Saved {formatDistanceToNow(createdAtDate, { addSuffix: true })}
-                        </p>
                       </div>
+                       <p className="text-xs text-muted-foreground pt-4 mt-auto">
+                        Saved {formatDistanceToNow(createdAtDate, { addSuffix: true })}
+                      </p>
                   </CardContent>
                 </Card>
               );
