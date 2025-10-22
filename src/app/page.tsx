@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react';
 import { Header } from '@/components/layout/header';
 import { PhotoUploader } from '@/components/photo-uploader';
 import { ReviewDisplay } from '@/components/review-display';
-import { getReview, getNewReview } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
@@ -26,6 +25,43 @@ export default function Home() {
   const storage = useStorage();
   const router = useRouter();
 
+  const handleReviewRequest = async (dataUrl: string, originalReview?: string) => {
+    startTransition(async () => {
+      try {
+        const response = await fetch('/api/review', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            photoDataUri: dataUrl,
+            ...(originalReview && { originalReview })
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to get review');
+        }
+
+        if (result.review) {
+          setReview(result.review);
+          if (originalReview) {
+             toast({
+                title: 'Review Regenerated!',
+                description: 'A new critique has been generated for your photo.',
+             });
+          }
+        } else {
+          setError(result.error || 'An unknown error occurred.');
+        }
+      } catch (e: any) {
+        setError(e.message || 'An unknown error occurred.');
+      }
+    });
+  };
+
   const handlePhotoUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -33,15 +69,7 @@ export default function Home() {
       setPhotoDataUrl(dataUrl);
       setReview(null);
       setError(null);
-
-      startTransition(async () => {
-        const result = await getReview(dataUrl);
-        if (result.success && result.review) {
-          setReview(result.review);
-        } else {
-          setError(result.error || 'An unknown error occurred.');
-        }
-      });
+      handleReviewRequest(dataUrl);
     };
     reader.readAsDataURL(file);
   };
@@ -50,19 +78,7 @@ export default function Home() {
     if (!photoDataUrl || !review) return;
     setError(null);
     const originalReviewJson = JSON.stringify(review);
-
-    startTransition(async () => {
-      const result = await getNewReview(photoDataUrl, originalReviewJson);
-      if (result.success && result.review) {
-        setReview(result.review);
-        toast({
-          title: 'Review Regenerated!',
-          description: 'A new critique has been generated for your photo.',
-        });
-      } else {
-        setError(result.error || 'An unknown error occurred.');
-      }
-    });
+    handleReviewRequest(photoDataUrl, originalReviewJson);
   };
 
   const handleSave = async () => {
@@ -77,14 +93,11 @@ export default function Home() {
 
     setIsSaving(true);
     try {
-      // 1. Upload image to Firebase Storage
       const imageRef = ref(storage, `photos/${user.uid}/${Date.now()}.jpg`);
       await uploadString(imageRef, photoDataUrl, 'data_url');
       
-      // 2. Get the download URL
       const downloadURL = await getDownloadURL(imageRef);
 
-      // 3. Save review to Firestore with the image URL
       const reviewText = JSON.stringify(review);
       const reviewsCollectionRef = collection(firestore, `users/${user.uid}/photoReviews`);
       
